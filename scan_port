@@ -1,0 +1,73 @@
+#coding:utf-8
+import optparse
+import time,re
+from threading import *
+from socket import *
+screenLock=Semaphore(value=1)
+def connScan(tgtHost,tgtPort):
+    try:
+        connS=socket(AF_INET,SOCK_STREAM)
+        connS.connect((tgtHost,tgtPort))
+        connS.send('ViolentPython\r\n')
+        results=connS.recv(100)
+        screenLock.acquire()
+        print '[+]%d tcp open'%int(tgtPort)
+        print '[+]'+str(results)
+    except:
+        screenLock.acquire()
+        print '[-]%d tcp closed'%int(tgtPort)
+    finally:
+        screenLock.release()
+        connS.close()
+
+def portScan(tgtHost,tgtPorts):
+        try:
+            tgtIP=gethostbyname(tgtHost)
+        except:
+            print u"[-]无法解析:"+str(tgtHost)+" 未知主机"
+            return
+        try:
+            tgName=gethostbyaddr(tgtIP)
+            print u"\n[+]扫描结果 :"+str(tgName[0])
+        except:
+            print u"\n[+]扫描结果 :"+str(tgtIP)
+        setdefaulttimeout(1)
+        for tgtPort in tgtPorts:
+            if tgtPort=='None':
+                continue
+            else:
+                t = Thread(target=connScan, args=(tgtHost, int(tgtPort)))
+                t.start()
+
+
+def main():
+    parser=optparse.OptionParser("usage%prog "+"-H <target host> -P <target port>")
+    parser.add_option('-H',dest='tgtHost',type='string',help='specify target host')
+    parser.add_option('-P',dest='tgtPort',type='string',help='specify target port[s] separated by comma')
+    parser.add_option('-p', dest='tgtPort_list', type='string', help='specify target ports_list separated by comma')
+    (options,args)=parser.parse_args()
+    tgtHost=options.tgtHost
+    tgtPort=options.tgtPort
+    tgtPorts_list=str(options.tgtPort_list)
+    tgtPorts=str(options.tgtPort).split(',')
+    lists=None
+    tgtPorts_list=str(options.tgtPort_list).split('-')
+    if(tgtHost==None)|((tgtPorts==None) & (tgtPorts_list==None)):
+        print '[-]You must specify a target host and port[s]'
+        exit(0)
+    if tgtPorts_list[0]!='None':
+        a=''
+        for i in range(int(tgtPorts_list[0]),int(tgtPorts_list[1])+1):
+            a+=' '+str(i)
+        print "[+]Scanning port:" +a
+        for i in range(int(tgtPorts_list[0]),int(tgtPorts_list[1])+1):
+            tgtPorts.append(i)
+        portScan(tgtHost, tgtPorts)
+    elif tgtPorts!='None':
+        print "[+]Scanning port:" + tgtPort
+        portScan(tgtHost,tgtPorts)
+
+if __name__ == '__main__':
+    time1=time.time()
+    main()
+    print u"用时:"+str(time.time()-time1)
